@@ -1,7 +1,5 @@
 package logica;
 
-// prueba commit ale
-
 import java.io.Serializable;
 
 public class Asignatura implements Serializable

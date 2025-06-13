@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Tarea
 from verify_token import verify_token
-from schemas import TareaOut  # ⬅️ Importa el esquema nuevo
+from schemas import TareaCreate, TareaOut, TareaUpdate
+
 
 router = APIRouter()
 fecha_desde: date | None = Query(default=None),

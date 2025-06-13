@@ -1,16 +1,21 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from dotenv import load_dotenv
 import os
 
-# URL de conexión desde variable de entorno
+load_dotenv()
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Crear el motor de conexión
 engine = create_engine(DATABASE_URL)
-
-# Crear sesión
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base para modelos ORM
 Base = declarative_base()
+
+def get_db():
+    db: Session = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

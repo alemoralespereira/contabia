@@ -2,7 +2,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from database import Base, engine
 from routers import tareas, clientes, auth
-from usuarios import router as usuarios_router  # ⬅️ Nuevo import
+from routers.usuarios import router as usuarios_router
+
 
 app = FastAPI()
 

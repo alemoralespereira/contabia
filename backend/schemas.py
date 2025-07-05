@@ -1,6 +1,34 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import date
+from enum import Enum
 
+# Si Rol no está definido en otro archivo, aquí te dejo uno base:
+class Rol(str, Enum):
+    admin = "admin"
+    supervisor = "supervisor"
+    miembro = "miembro"
+
+# -----------------------------
+#           USERS
+# -----------------------------
+class UserBase(BaseModel):
+    email: EmailStr
+    username: str
+    rol: Rol
+
+class UserCreate(UserBase):
+    password: str
+    empresa_id: int
+
+class UserOut(UserBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+# -----------------------------
+#         CLIENTES
+# -----------------------------
 class ClienteOut(BaseModel):
     id: int
     nombre: str
@@ -8,19 +36,15 @@ class ClienteOut(BaseModel):
     class Config:
         orm_mode = True
 
-class UsuarioOut(BaseModel):
-    id: int
-    username: str
-
-    class Config:
-        orm_mode = True
-
+# -----------------------------
+#          TAREAS
+# -----------------------------
 class TareaOut(BaseModel):
     id: int
     titulo: str
     estado: str
     cliente: ClienteOut
-    usuario: UsuarioOut
+    usuario: UserOut
     fecha_vencimiento: date
 
     class Config:
@@ -32,7 +56,6 @@ class TareaCreate(BaseModel):
     cliente_id: int
     usuario_id: int
     fecha_vencimiento: date
-
 
 class TareaUpdate(BaseModel):
     titulo: str | None = None

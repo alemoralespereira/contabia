@@ -1,203 +1,204 @@
-import React, { useState, useEffect } from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import KanbanBoard from './KanbanBoard';
-import TeamManagement from './TeamManagement';
-import ClientManagement from './ClientManagement';
-import Reports from './Reports';
-import UserProfile from './UserProfile';
-import { tasks as initialTasks } from '../mock/tasks';
-import { users as initialUsers } from '../mock/users'; // Renombrado para evitar conflicto
-import { teams as initialTeams } from '../mock/users'; // Renombrado para evitar conflicto
-import { accounts } from '../mock/users';
-import { clients as initialClients } from '../mock/clients'; // Renombrado para evitar conflicto
-import { getUserTeamMembers } from '../utils/auth';
-import { getTasksByUser, updateTaskStatus } from '../utils/taskUtils';
+import React, { useState, useEffect, useCallback } from "react";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
+import KanbanBoard from "./KanbanBoard";
+import TeamManagement from "./TeamManagement";
+import ClientManagement from "./ClientManagement";
+import Reports from "./Reports";
+import UserProfile from "./UserProfile";
+import { getUserTeamMembers } from "../utils/auth";
+import { getTasksByUser, updateTaskStatus } from "../utils/taskUtils";
+
+const API = process.env.REACT_APP_API_URL; // https://contabia-backend.onrender.com
+
+/** Utilidad genérica para llamadas fetch con token */
+const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem("token");
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    ...options.headers,
+  };
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+  return res.json();
+};
 
 const Dashboard = ({ user, onLogout }) => {
-  const [currentView, setCurrentView] = useState('kanban');
-  const [currentTasks, setCurrentTasks] = useState(initialTasks);
-  const [currentUsers, setCurrentUsers] = useState(initialUsers);
-  const [currentTeams, setCurrentTeams] = useState(initialTeams);
-  const [currentClients, setCurrentClients] = useState(initialClients);
+  // ---------------- Estado ----------------
+  const [currentView, setCurrentView] = useState("kanban");
+  const [currentTasks, setCurrentTasks] = useState([]);
+  const [currentUsers, setCurrentUsers] = useState([]);
+  const [currentTeams, setCurrentTeams] = useState([]);
+  const [currentClients, setCurrentClients] = useState([]);
   const [selectedTeamMember, setSelectedTeamMember] = useState(null);
-  
-  // Obtener miembros del equipo si el user es supervisor o admin
-  const teamMembers = getUserTeamMembers(user, Array.isArray(currentUsers) ? currentUsers : [], Array.isArray(currentTeams) ? currentTeams : []);
-  
-  // Efecto para resetear la selección de miembro cuando la vista cambia a algo que no es kanban
-  useEffect(() => {
-    if (currentView !== 'kanban') {
-      setSelectedTeamMember(null);
+
+  // ---------------- Cargar datos desde el backend ----------------
+  const loadInitialData = useCallback(async () => {
+    try {
+      const [tasks, clients, users] = await Promise.all([
+        fetchWithAuth(`${API}/tareas`),
+        fetchWithAuth(`${API}/clientes`),
+        fetchWithAuth(`${API}/usuarios`), // solo admin verá la lista completa
+      ]);
+      setCurrentTasks(tasks);
+      setCurrentClients(clients);
+      setCurrentUsers(users);
+      // (Opcional) Cargar teams si implementas endpoint /teams
+      // const teams = await fetchWithAuth(`${API}/teams`);
+      // setCurrentTeams(teams);
+    } catch (err) {
+      console.error("Error cargando datos iniciales:", err);
+      if (err.message.includes("401")) onLogout(); // token expirado
     }
+  }, [onLogout]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  // Obtener miembros del equipo (de utilidades)
+  const teamMembers = getUserTeamMembers(user, currentUsers, currentTeams);
+
+  // Reset selección de miembro al cambiar vista
+  useEffect(() => {
+    if (currentView !== "kanban") setSelectedTeamMember(null);
   }, [currentView]);
 
-  // Manejar cambio de estado de una tarea
-  const handleTaskStatusChange = (taskId, newStatus) => {
-    const updatedTasks = updateTaskStatus(currentTasks, taskId, newStatus);
-    setCurrentTasks(updatedTasks);
+  // ---------------- Handlers de estado local y API ----------------
+  // Actualizar estado de una tarea
+  const handleTaskStatusChange = async (taskId, newStatus) => {
+    try {
+      await fetchWithAuth(`${API}/tareas/${taskId}`, {
+        method: "PUT",
+        body: JSON.stringify({ estado: newStatus }),
+      });
+      // Refrescar lista local
+      setCurrentTasks((prev) => updateTaskStatus(prev, taskId, newStatus));
+    } catch (err) {
+      console.error("Error cambiando estado:", err);
+    }
   };
-  
-  // Manejar la selección de un miembro del equipo para ver sus tareas
+
+  // Seleccionar miembro del equipo
   const handleTeamMemberSelect = (memberId) => {
     setSelectedTeamMember(memberId);
-    setCurrentView('kanban'); // Asegurarse de que la vista sea Kanban
+    setCurrentView("kanban");
   };
 
-  // Funciones de administración para Clientes
-  const handleAddClient = (newClient) => {
-    setCurrentClients(prevClients => [...prevClients, { ...newClient, id: prevClients.length + 1 }]);
-  };
-
-  const handleEditClient = (updatedClient) => {
-    setCurrentClients(prevClients => prevClients.map(client => 
-      client.id === updatedClient.id ? updatedClient : client
-    ));
-  };
-
-  // Funciones de administración para Equipos
-  const handleAddTeam = (newTeam) => {
-    setCurrentTeams(prevTeams => [...prevTeams, { ...newTeam, id: prevTeams.length + 1 }]);
-  };
-
-  const handleEditTeam = (updatedTeam) => {
-    setCurrentTeams(prevTeams => prevTeams.map(team => 
-      team.id === updatedTeam.id ? updatedTeam : team
-    ));
-  };
-
-  const handleDeleteTeam = (teamId) => {
-    setCurrentTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
-    setCurrentUsers(prevUsers => prevUsers.map(user => 
-      user.teamId === teamId ? { ...user, teamId: null } : user
-    ));
-  };
-
-  const handleAssignSupervisor = (teamId, supervisorId) => {
-    setCurrentTeams(prevTeams => prevTeams.map(team => 
-      team.id === teamId ? { ...team, supervisorId: supervisorId } : team
-    ));
-  };
-
-  // Funciones de administración para Miembros
-  const handleAddMember = (newMember) => {
-    // Generar un ID único para el nuevo miembro
-    const newId = Math.max(...currentUsers.map(u => u.id)) + 1;
-    const memberWithId = { ...newMember, id: newId };
-    setCurrentUsers(prevUsers => [...prevUsers, memberWithId]);
-    return memberWithId; // Devolver el miembro con su ID
-  };
-
-  const handleEditMember = (updatedMember) => {
-    setCurrentUsers(prevUsers => prevUsers.map(member => 
-      member.id === updatedMember.id ? updatedMember : member
-    ));
-  };
-
-  const handleDeleteMember = (memberId) => {
-    setCurrentUsers(prevUsers => prevUsers.filter(member => member.id !== memberId));
-    setCurrentTasks(prevTasks => prevTasks.map(task => 
-      task.assigneeId === memberId ? { ...task, assigneeId: null } : task
-    ));
-  };
-
-  const handleAddTeamMember = (memberId, teamId) => {
-    setCurrentUsers(prevUsers => prevUsers.map(user => 
-      user.id === memberId ? { ...user, teamId: teamId } : user
-    ));
-  };
-
-  const handleRemoveTeamMember = (memberId) => {
-    setCurrentUsers(prevUsers => prevUsers.map(user => 
-      user.id === memberId ? { ...user, teamId: null } : user
-    ));
-  };
-  
-  // Determinar qué tareas mostrar en el tablero Kanban
-  const getKanbanTasks = () => {
-    // Aseguramos que currentTasks sea un array antes de filtrar
-    const tasksToFilter = Array.isArray(currentTasks) ? currentTasks : [];
-
-    // Si hay un miembro del equipo seleccionado, mostrar sus tareas
-    if (selectedTeamMember) {
-      return getTasksByUser(tasksToFilter, selectedTeamMember);
+  // ---------- Clientes ----------
+  const handleAddClient = async (newClient) => {
+    try {
+      const created = await fetchWithAuth(`${API}/clientes`, {
+        method: "POST",
+        body: JSON.stringify(newClient),
+      });
+      setCurrentClients((prev) => [...prev, created]);
+    } catch (err) {
+      console.error("Error añadiendo cliente:", err);
     }
-    // Si no hay miembro seleccionado, mostrar las tareas del user logueado
-    return getTasksByUser(tasksToFilter, user.id);
   };
-  
-  // Renderizar la vista actual
+
+  const handleEditClient = async (updatedClient) => {
+    try {
+      const res = await fetchWithAuth(`${API}/clientes/${updatedClient.id}`, {
+        method: "PUT",
+        body: JSON.stringify(updatedClient),
+      });
+      setCurrentClients((prev) =>
+        prev.map((c) => (c.id === res.id ? res : c))
+      );
+    } catch (err) {
+      console.error("Error editando cliente:", err);
+    }
+  };
+
+  // ---------- Teams & Users ----------
+  // Aquí solo dejo stubs; implementarás endpoints /teams y /usuarios según necesites
+  const handleAddTeam = async (newTeam) => {/* ... */};
+  const handleEditTeam = async (team) => {/* ... */};
+  const handleDeleteTeam = async (id) => {/* ... */};
+  const handleAssignSupervisor = async (teamId, supervisorId) => {/* ... */};
+
+  const handleAddMember = async (newMember) => {/* ... */};
+  const handleEditMember = async (member) => {/* ... */};
+  const handleDeleteMember = async (id) => {/* ... */};
+  const handleAddTeamMember = async (memberId, teamId) => {/* ... */};
+  const handleRemoveTeamMember = async (memberId) => {/* ... */};
+
+  // ---------------- Helpers ----------------
+  const getKanbanTasks = () => {
+    const list = currentTasks || [];
+    if (selectedTeamMember) return getTasksByUser(list, selectedTeamMember);
+    return getTasksByUser(list, user.id);
+  };
+
+  // ---------------- Render principal ----------------
   const renderCurrentView = () => {
-    // Añadimos console.log para depurar el estado del user y la vista
-    console.log("Dashboard: Rendering view:", currentView, "User:", user, "Selected Member:", selectedTeamMember);
-    console.log("Dashboard: currentTasks length:", currentTasks.length);
-    console.log("Dashboard: currentUsers length:", currentUsers.length);
-    console.log("Dashboard: currentClients length:", currentClients.length);
-    console.log("Dashboard: currentTeams length:", currentTeams.length);
-
-
     switch (currentView) {
-      case 'kanban':
+      case "kanban":
         return (
-          <KanbanBoard 
-            tasks={getKanbanTasks()} 
+          <KanbanBoard
+            tasks={getKanbanTasks()}
             onStatusChange={handleTaskStatusChange}
-            clients={currentClients} 
-            users={currentUsers}       
-            selectedUser={selectedTeamMember ? currentUsers.find(u => u.id === selectedTeamMember) : user}
+            clients={currentClients}
+            users={currentUsers}
+            selectedUser={
+              selectedTeamMember
+                ? currentUsers.find((u) => u.id === selectedTeamMember)
+                : user
+            }
             currentUser={user}
             onClearSelection={() => setSelectedTeamMember(null)}
           />
         );
-      case 'teams':
+      case "teams":
         return (
-          <TeamManagement 
-            teams={currentTeams} 
-            users={currentUsers} 
+          <TeamManagement
+            teams={currentTeams}
+            users={currentUsers}
             currentUser={user}
             onSelectMember={handleTeamMemberSelect}
             onAddTeam={handleAddTeam}
             onEditTeam={handleEditTeam}
             onDeleteTeam={handleDeleteTeam}
-            onAddMember={handleAddMember} // Pasamos la función de agregar miembro
+            onAddMember={handleAddMember}
             onEditMember={handleEditMember}
             onDeleteMember={handleDeleteMember}
-            onAddTeamMember={handleAddTeamMember} // Pasamos la función de asignar miembro a equipo
+            onAddTeamMember={handleAddTeamMember}
             onRemoveTeamMember={handleRemoveTeamMember}
             onAssignSupervisor={handleAssignSupervisor}
           />
         );
-      case 'clients':
+      case "clients":
         return (
-          <ClientManagement 
-            clients={currentClients} 
-            currentUser={user} 
+          <ClientManagement
+            clients={currentClients}
+            currentUser={user}
             onAddClient={handleAddClient}
             onEditClient={handleEditClient}
           />
         );
-      case 'reports':
+      case "reports":
         return (
-          <Reports 
-            tasks={currentTasks} 
-            users={currentUsers} 
-            teams={currentTeams} 
+          <Reports
+            tasks={currentTasks}
+            users={currentUsers}
+            teams={currentTeams}
             clients={currentClients}
             currentUser={user}
           />
         );
-      case 'profile':
+      case "profile":
         return <UserProfile user={user} />;
       default:
-        // Fallback seguro si currentView es un valor inesperado
-        console.warn("Unexpected currentView:", currentView, "Defaulting to KanbanBoard.");
         return (
-          <KanbanBoard 
-            tasks={getKanbanTasks()} 
+          <KanbanBoard
+            tasks={getKanbanTasks()}
             onStatusChange={handleTaskStatusChange}
             clients={currentClients}
             users={currentUsers}
-            selectedUser={user} // Por defecto, mostrar las tareas del user logueado
+            selectedUser={user}
             currentUser={user}
             onClearSelection={() => setSelectedTeamMember(null)}
           />
@@ -207,22 +208,22 @@ const Dashboard = ({ user, onLogout }) => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar 
-        currentView={currentView} 
+      <Sidebar
+        currentView={currentView}
         setCurrentView={setCurrentView}
         user={user}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
-          user={user} 
+        <Header
+          user={user}
           onLogout={onLogout}
           teamMembers={teamMembers}
           selectedMember={selectedTeamMember}
           onSelectMember={handleTeamMemberSelect}
           onClearSelection={() => setSelectedTeamMember(null)}
         />
-        
+
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4">
           {renderCurrentView()}
         </main>

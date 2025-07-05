@@ -11,6 +11,15 @@ class Rol(str, Enum):
 # -----------------------------
 #           USERS
 # -----------------------------
+
+class UserOut(BaseModel):
+    id: int
+    nombre: str
+    email: EmailStr
+
+    class Config:
+        orm_mode = True
+
 class UserBase(BaseModel):
     email: EmailStr
     username: str
@@ -24,6 +33,8 @@ class UserUpdate(BaseModel):
     nombre: str
     email: EmailStr
 
+
+
 # -----------------------------
 #         CLIENTES
 # -----------------------------
@@ -33,6 +44,7 @@ class ClienteOut(BaseModel):
 
     class Config:
         orm_mode = True
+
 
 # -----------------------------
 #          TAREAS

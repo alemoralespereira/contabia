@@ -17,7 +17,7 @@ app.include_router(usuarios_router)  # ⬅️ Nuevo router agregado
 # Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://contabia-frontend.netlify.app"],
+    allow_origins=["https://contabia-git-main-alejandro-morales-projects-f200c0cc.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

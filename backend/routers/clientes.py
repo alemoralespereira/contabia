@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models import Cliente, Tarea, User
-from auth import get_current_user
+from routers.auth import get_current_user
+
 
 router = APIRouter()
 

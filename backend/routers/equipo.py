@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import Team, User
-from auth import get_current_user
+from routers.auth import get_current_user
 from pydantic import BaseModel
 
 router = APIRouter()

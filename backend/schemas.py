@@ -20,11 +20,9 @@ class UserCreate(UserBase):
     password: str
     empresa_id: int
 
-class UserOut(UserBase):
-    id: int
-
-    class Config:
-        orm_mode = True
+class UserUpdate(BaseModel):
+    nombre: str
+    email: EmailStr
 
 # -----------------------------
 #         CLIENTES

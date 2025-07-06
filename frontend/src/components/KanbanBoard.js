@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import axios from './axiosInstance';            // 👈 usa el wrapper con interceptor
+import axios from '../axiosInstance';            // 👈 usa el wrapper con interceptor
 
 // Etiquetas amigables para los encabezados de columna
 const estadoColumnas = {

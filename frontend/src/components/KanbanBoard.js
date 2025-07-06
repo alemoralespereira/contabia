@@ -1,59 +1,80 @@
 import React, { useEffect, useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import axios from 'axios';
+import axios from './axiosInstance';            // 👈 usa el wrapper con interceptor
 
+// Etiquetas amigables para los encabezados de columna
 const estadoColumnas = {
   PENDIENTE: 'Pendiente',
   EN_PROGRESO: 'En progreso',
   COMPLETADA: 'Completada',
 };
 
+// Estructura inicial vacía
 const columnasIniciales = {
   PENDIENTE: [],
   EN_PROGRESO: [],
   COMPLETADA: [],
 };
 
-const TableroKanban = () => {
+const KanbanBoard = () => {
   const [tareas, setTareas] = useState([]);
   const [columnas, setColumnas] = useState(columnasIniciales);
 
+  /* ───────────────────────────────────────────
+     Cargar tareas al montar el componente
+  ────────────────────────────────────────────*/
   useEffect(() => {
-    axios.get('https://contabia-backend.onrender.com/tareas').then((res) => {
-      setTareas(res.data);
-      const nuevasColumnas = { ...columnasIniciales };
-      res.data.forEach((tarea) => {
-        nuevasColumnas[tarea.estado].push(tarea);
-      });
-      setColumnas(nuevasColumnas);
-    });
+    const fetchTareas = async () => {
+      try {
+        const { data } = await axios.get('/tareas');
+        setTareas(data);
+
+        // Distribuir tareas en sus columnas
+        const nuevasColumnas = { ...columnasIniciales };
+        data.forEach((t) => {
+          if (nuevasColumnas[t.estado]) {
+            nuevasColumnas[t.estado].push(t);
+          }
+        });
+        setColumnas(nuevasColumnas);
+      } catch (err) {
+        console.error('Error al obtener tareas:', err);
+        // Aquí podrías mostrar un toast o mensaje de error si lo deseas
+      }
+    };
+
+    fetchTareas();
   }, []);
 
-  const onDragEnd = async (result) => {
-    const { destination, source, draggableId } = result;
+  /* ───────────────────────────────────────────
+     Drag-and-drop y actualización en backend
+  ────────────────────────────────────────────*/
+  const onDragEnd = async ({ destination, source, draggableId }) => {
     if (!destination || destination.droppableId === source.droppableId) return;
 
-    const tareaMovida = columnas[source.droppableId].find((t) => t.id.toString() === draggableId);
+    // Copias inmutables
     const nuevasColumnas = { ...columnas };
+    const origenItems   = Array.from(nuevasColumnas[source.droppableId]);
+    const destinoItems  = Array.from(nuevasColumnas[destination.droppableId]);
 
-    // Quitar de columna origen
-    nuevasColumnas[source.droppableId] = [...nuevasColumnas[source.droppableId]];
-    nuevasColumnas[source.droppableId].splice(source.index, 1);
+    const [tareaMovida] = origenItems.splice(source.index, 1);
+    tareaMovida.estado = destination.droppableId;            // actualizar estado local
+    destinoItems.splice(destination.index, 0, tareaMovida);
 
-    // Agregar a columna destino
-    nuevasColumnas[destination.droppableId] = [...nuevasColumnas[destination.droppableId]];
-    nuevasColumnas[destination.droppableId].splice(destination.index, 0, {
-      ...tareaMovida,
-      estado: destination.droppableId,
-    });
-
+    nuevasColumnas[source.droppableId]     = origenItems;
+    nuevasColumnas[destination.droppableId] = destinoItems;
     setColumnas(nuevasColumnas);
 
-    // Actualizar en backend
-    await axios.put(`https://contabia-backend.onrender.com/tareas/${tareaMovida.id}`, {
-      ...tareaMovida,
-      estado: destination.droppableId,
-    });
+    // Persistir cambio en el backend
+    try {
+      await axios.put(`/tareas/${tareaMovida.id}`, {
+        ...tareaMovida,
+        estado: destination.droppableId,
+      });
+    } catch (err) {
+      console.error('Error actualizando tarea:', err);
+      // Podrías revertir el estado local o mostrar un mensaje de error
+    }
   };
 
   return (
@@ -67,21 +88,29 @@ const TableroKanban = () => {
                 {...provided.droppableProps}
                 className="bg-gray-100 rounded-md p-4 w-1/3"
               >
-                <h2 className="font-bold text-lg mb-2">{estadoColumnas[estado]}</h2>
+                <h2 className="font-bold text-lg mb-2">
+                  {estadoColumnas[estado] || estado}
+                </h2>
+
                 {columnas[estado].map((tarea, index) => (
-                  <Draggable draggableId={tarea.id.toString()} index={index} key={tarea.id}>
+                  <Draggable
+                    key={tarea.id}
+                    draggableId={tarea.id.toString()}
+                    index={index}
+                  >
                     {(provided) => (
                       <div
-                        className="bg-white p-3 mb-2 rounded shadow"
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
+                        className="bg-white p-3 mb-2 rounded shadow"
                       >
-                        {tarea.descripcion}
+                        {tarea.descripcion || tarea.titulo}
                       </div>
                     )}
                   </Draggable>
                 ))}
+
                 {provided.placeholder}
               </div>
             )}
@@ -92,6 +121,7 @@ const TableroKanban = () => {
   );
 };
 
-export default TableroKanban;
+export default KanbanBoard;
+
 
 

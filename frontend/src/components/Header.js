@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { users } from '../mock/users'; // Importar users para buscar el nombre del miembro
 
 const Header = ({ user, onLogout, teamMembers, selectedMember, onSelectMember, onClearSelection }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);

@@ -40,7 +40,7 @@ class UserUpdate(BaseModel):
 #         CLIENTES
 # -----------------------------
 class ClienteOut(BaseModel):
-    id: int
+    id: str
     nombre: str
 
     class Config:

@@ -41,6 +41,7 @@ class User(Base):
     rol = Column(Enum(Rol), nullable=False)
     empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    nombre = Column(String, nullable=True)
 
     empresa = relationship("Empresa", back_populates="usuarios")
     tareas = relationship("Tarea", back_populates="usuario")

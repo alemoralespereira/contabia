@@ -42,22 +42,16 @@ def authenticate_user(db: Session, username: str, password: str):
 # ────────────────────────────────────────────────────────────
 #  Crear JWT con empresa_id y rol
 # ────────────────────────────────────────────────────────────
-def create_access_token(
-    user: User,
-    expires_delta: timedelta | None = None
-) -> str:
-    expire = datetime.utcnow() + (expires_delta or timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    ))
-
+def create_access_token(user):
     payload = {
-        "sub": str(user.id),          # ID único del usuario
+        "sub": user.email,
+        "user_id": user.id,
         "empresa_id": user.empresa_id,
-        "rol": user.rol,
-        "exp": expire
+        "rol": str(user.rol),  # 👈 convertimos el Enum a string
     }
     encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 # ────────────────────────────────────────────────────────────
 #  Endpoint de login

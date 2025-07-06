@@ -9,9 +9,9 @@ import UserProfile from "./UserProfile";
 import { getUserTeamMembers } from "../utils/auth";
 import { getTasksByUser, updateTaskStatus } from "../utils/taskUtils";
 
-const API = process.env.REACT_APP_API_URL; // https://contabia-backend.onrender.com
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000"; // backend
 
-/** Utilidad genérica para llamadas fetch con token */
+/** Utilidad genérica para fetch con token JWT */
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem("token");
   const headers = {
@@ -33,23 +33,24 @@ const Dashboard = ({ user, onLogout }) => {
   const [currentClients, setCurrentClients] = useState([]);
   const [selectedTeamMember, setSelectedTeamMember] = useState(null);
 
-  // ---------------- Cargar datos desde el backend ----------------
+  // ---------------- Cargar datos iniciales ----------------
   const loadInitialData = useCallback(async () => {
     try {
       const [tasks, clients, users] = await Promise.all([
-        fetchWithAuth(`${API}/tareas`),
-        fetchWithAuth(`${API}/clientes`),
-        fetchWithAuth(`${API}/usuarios`), // solo admin verá la lista completa
+        fetchWithAuth(`${API}/tareas`),     // tareas por empresa
+        fetchWithAuth(`${API}/clientes`),   // clientes
+        fetchWithAuth(`${API}/usuarios`),   // usuarios (visible solo a admin)
       ]);
       setCurrentTasks(tasks);
       setCurrentClients(clients);
       setCurrentUsers(users);
-      // (Opcional) Cargar teams si implementas endpoint /teams
-      // const teams = await fetchWithAuth(`${API}/teams`);
+
+      // (Opcional) Cargar teams cuando implementes /equipos
+      // const teams = await fetchWithAuth(`${API}/equipos`);
       // setCurrentTeams(teams);
     } catch (err) {
       console.error("Error cargando datos iniciales:", err);
-      if (err.message.includes("401")) onLogout(); // token expirado
+      if (err.message.includes("401")) onLogout(); // token vencido / inválido
     }
   }, [onLogout]);
 
@@ -57,30 +58,29 @@ const Dashboard = ({ user, onLogout }) => {
     loadInitialData();
   }, [loadInitialData]);
 
-  // Obtener miembros del equipo (de utilidades)
+  // Obtener miembros del equipo (utilidad)
   const teamMembers = getUserTeamMembers(user, currentUsers, currentTeams);
 
-  // Reset selección de miembro al cambiar vista
+  // Reset selección si dejas la vista Kanban
   useEffect(() => {
     if (currentView !== "kanban") setSelectedTeamMember(null);
   }, [currentView]);
 
-  // ---------------- Handlers de estado local y API ----------------
-  // Actualizar estado de una tarea
+  // ---------------- Handlers ----------------
+  // Cambiar estado de una tarea (drag-&-drop o select)
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
       await fetchWithAuth(`${API}/tareas/${taskId}`, {
         method: "PUT",
         body: JSON.stringify({ estado: newStatus }),
       });
-      // Refrescar lista local
       setCurrentTasks((prev) => updateTaskStatus(prev, taskId, newStatus));
     } catch (err) {
       console.error("Error cambiando estado:", err);
     }
   };
 
-  // Seleccionar miembro del equipo
+  // Seleccionar miembro
   const handleTeamMemberSelect = (memberId) => {
     setSelectedTeamMember(memberId);
     setCurrentView("kanban");
@@ -113,27 +113,27 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  // ---------- Teams & Users ----------
-  // Aquí solo dejo stubs; implementarás endpoints /teams y /usuarios según necesites
-  const handleAddTeam = async (newTeam) => {/* ... */};
-  const handleEditTeam = async (team) => {/* ... */};
-  const handleDeleteTeam = async (id) => {/* ... */};
-  const handleAssignSupervisor = async (teamId, supervisorId) => {/* ... */};
+  // ---------- Equipos & Usuarios ----------
+  // Stubs para implementar cuando tengas endpoints
+  const handleAddTeam = async (newTeam) => {};
+  const handleEditTeam = async (team) => {};
+  const handleDeleteTeam = async (id) => {};
+  const handleAssignSupervisor = async (teamId, supervisorId) => {};
 
-  const handleAddMember = async (newMember) => {/* ... */};
-  const handleEditMember = async (member) => {/* ... */};
-  const handleDeleteMember = async (id) => {/* ... */};
-  const handleAddTeamMember = async (memberId, teamId) => {/* ... */};
-  const handleRemoveTeamMember = async (memberId) => {/* ... */};
+  const handleAddMember = async (newMember) => {};
+  const handleEditMember = async (member) => {};
+  const handleDeleteMember = async (id) => {};
+  const handleAddTeamMember = async (memberId, teamId) => {};
+  const handleRemoveTeamMember = async (memberId) => {};
 
   // ---------------- Helpers ----------------
   const getKanbanTasks = () => {
-    const list = currentTasks || [];
-    if (selectedTeamMember) return getTasksByUser(list, selectedTeamMember);
-    return getTasksByUser(list, user.id);
+    if (selectedTeamMember)
+      return getTasksByUser(currentTasks, selectedTeamMember);
+    return getTasksByUser(currentTasks, user.id);
   };
 
-  // ---------------- Render principal ----------------
+  // ---------------- Render vista ----------------
   const renderCurrentView = () => {
     switch (currentView) {
       case "kanban":
@@ -206,6 +206,7 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
+  // ---------------- Layout principal ----------------
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar

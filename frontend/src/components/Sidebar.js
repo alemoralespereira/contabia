@@ -28,7 +28,7 @@ const Sidebar = ({ currentView, setCurrentView, user }) => {
   // Filtrar elementos de navegación según el rol del user
   const filteredNavItems = navItems.filter(item => {
     if (!item.roles) return true; // Si no tiene restricción de roles, mostrar para todos
-    return item.roles.includes(user.role);
+    return item.roles.includes(user.rol);
   });
 
   return (

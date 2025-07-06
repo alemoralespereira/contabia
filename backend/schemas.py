@@ -16,6 +16,7 @@ class UserOut(BaseModel):
     id: int
     nombre: str
     email: EmailStr
+    rol: str
 
     class Config:
         orm_mode = True

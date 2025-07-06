@@ -18,17 +18,18 @@ class Empresa(Base):
     usuarios = relationship("User",    back_populates="empresa")
     clientes = relationship("Cliente", back_populates="empresa")
 
-    class Team(Base):
-        __tablename__ = "teams"
-        id = Column(Integer, primary_key=True, index=True)
-        name = Column(String, nullable=False)
-        description = Column(String, nullable=True)
-        empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
-        supervisor_id = Column(Integer, ForeignKey("users.id"))
+class Team(Base):
+    __tablename__ = "teams"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    supervisor_id = Column(Integer, ForeignKey("users.id"))
 
-        empresa = relationship("Empresa")
-        supervisor = relationship("User", foreign_keys=[supervisor_id])
-        miembros = relationship("User", back_populates="equipo")
+    empresa = relationship("Empresa")
+    supervisor = relationship("User", foreign_keys=[supervisor_id])
+    miembros = relationship("User", back_populates="equipo", 	foreign_keys="User.team_id")
+
 
 
 class User(Base):

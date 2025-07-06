@@ -7,11 +7,10 @@ import ClientManagement from "./ClientManagement";
 import Reports from "./Reports";
 import UserProfile from "./UserProfile";
 import { getUserTeamMembers } from "../utils/auth";
-import { getTasksByUser, updateTaskStatus } from "../utils/taskUtils";
+import { getTasksByUser } from "../utils/taskUtils";
 import axios from "../axiosInstance";
 
 const Dashboard = ({ user, onLogout }) => {
-  // ---------------- Estado ----------------
   const [currentView, setCurrentView] = useState("kanban");
   const [currentTasks, setCurrentTasks] = useState([]);
   const [currentUsers, setCurrentUsers] = useState([]);
@@ -19,7 +18,6 @@ const Dashboard = ({ user, onLogout }) => {
   const [currentClients, setCurrentClients] = useState([]);
   const [selectedTeamMember, setSelectedTeamMember] = useState(null);
 
-  // ---------------- Cargar datos iniciales ----------------
   const loadInitialData = useCallback(async () => {
     try {
       const [tasksRes, clientsRes, usersRes] = await Promise.all([
@@ -30,7 +28,6 @@ const Dashboard = ({ user, onLogout }) => {
       setCurrentTasks(tasksRes.data);
       setCurrentClients(clientsRes.data);
       setCurrentUsers(usersRes.data);
-
       // const teamsRes = await axios.get("/equipos");
       // setCurrentTeams(teamsRes.data);
     } catch (err) {
@@ -43,17 +40,25 @@ const Dashboard = ({ user, onLogout }) => {
     loadInitialData();
   }, [loadInitialData]);
 
+  const reloadTasks = async () => {
+    try {
+      const res = await axios.get("/tareas");
+      setCurrentTasks(res.data);
+    } catch (err) {
+      console.error("Error recargando tareas:", err);
+    }
+  };
+
   const teamMembers = getUserTeamMembers(user, currentUsers, currentTeams);
 
   useEffect(() => {
     if (currentView !== "kanban") setSelectedTeamMember(null);
   }, [currentView]);
 
-  // ---------------- Handlers ----------------
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
       await axios.put(`/tareas/${taskId}`, { estado: newStatus });
-      setCurrentTasks((prev) => updateTaskStatus(prev, taskId, newStatus));
+      await reloadTasks();
     } catch (err) {
       console.error("Error cambiando estado:", err);
     }
@@ -88,21 +93,18 @@ const Dashboard = ({ user, onLogout }) => {
   const handleEditTeam = async (team) => {};
   const handleDeleteTeam = async (id) => {};
   const handleAssignSupervisor = async (teamId, supervisorId) => {};
-
   const handleAddMember = async (newMember) => {};
   const handleEditMember = async (member) => {};
   const handleDeleteMember = async (id) => {};
   const handleAddTeamMember = async (memberId, teamId) => {};
   const handleRemoveTeamMember = async (memberId) => {};
 
-  // ---------------- Helpers ----------------
   const getKanbanTasks = () => {
     if (selectedTeamMember)
       return getTasksByUser(currentTasks, selectedTeamMember);
     return getTasksByUser(currentTasks, user.id);
   };
 
-  // ---------------- Render vista ----------------
   const renderCurrentView = () => {
     switch (currentView) {
       case "kanban":
@@ -200,3 +202,4 @@ const Dashboard = ({ user, onLogout }) => {
 };
 
 export default Dashboard;
+

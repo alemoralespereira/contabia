@@ -32,9 +32,11 @@ const KanbanBoard = () => {
         // Distribuir tareas en sus columnas
         const nuevasColumnas = { ...columnasIniciales };
         data.forEach((t) => {
-          if (nuevasColumnas[t.estado]) {
-            nuevasColumnas[t.estado].push(t);
+          const estadoNormalizado = t.estado?.trim().toUpperCase();
+	  if (estadoNormalizado && nuevasColumnas[estadoNormalizado]) {
+  	  nuevasColumnas[estadoNormalizado].push({ ...t, estado: estadoNormalizado });
           }
+
         });
         setColumnas(nuevasColumnas);
       } catch (err) {
@@ -69,7 +71,7 @@ const KanbanBoard = () => {
     try {
       await axios.put(`/tareas/${tareaMovida.id}`, {
         ...tareaMovida,
-        estado: destination.droppableId,
+        estado: destination.droppableId.toUpperCase()
       });
     } catch (err) {
       console.error('Error actualizando tarea:', err);

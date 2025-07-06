@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import axios from '../axiosInstance';            // 👈 usa el wrapper con interceptor
+import axios from '../axiosInstance'; // 👈 usa el wrapper con interceptor
 
 // Etiquetas amigables para los encabezados de columna
 const estadoColumnas = {
@@ -21,58 +21,62 @@ const KanbanBoard = () => {
   const [columnas, setColumnas] = useState(columnasIniciales);
 
   /* ───────────────────────────────────────────
+     Función reutilizable para traer tareas
+  ────────────────────────────────────────────*/
+  const fetchTareas = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/tareas');
+      setTareas(data);
+
+      // Distribuir tareas normalizando el estado
+      const nuevasColumnas = { ...columnasIniciales };
+      data.forEach((t) => {
+        const estadoNormalizado = t.estado?.trim().toUpperCase();
+        if (estadoNormalizado && nuevasColumnas[estadoNormalizado]) {
+          nuevasColumnas[estadoNormalizado].push({ ...t, estado: estadoNormalizado });
+        }
+      });
+      setColumnas(nuevasColumnas);
+    } catch (err) {
+      console.error('Error al obtener tareas:', err);
+      // Podrías mostrar un toast o mensaje de error si lo deseas
+    }
+  }, []);
+
+  /* ───────────────────────────────────────────
      Cargar tareas al montar el componente
   ────────────────────────────────────────────*/
   useEffect(() => {
-    const fetchTareas = async () => {
-      try {
-        const { data } = await axios.get('/tareas');
-        setTareas(data);
-
-        // Distribuir tareas en sus columnas
-        const nuevasColumnas = { ...columnasIniciales };
-        data.forEach((t) => {
-          const estadoNormalizado = t.estado?.trim().toUpperCase();
-	  if (estadoNormalizado && nuevasColumnas[estadoNormalizado]) {
-  	  nuevasColumnas[estadoNormalizado].push({ ...t, estado: estadoNormalizado });
-          }
-
-        });
-        setColumnas(nuevasColumnas);
-      } catch (err) {
-        console.error('Error al obtener tareas:', err);
-        // Aquí podrías mostrar un toast o mensaje de error si lo deseas
-      }
-    };
-
     fetchTareas();
-  }, []);
+  }, [fetchTareas]);
 
   /* ───────────────────────────────────────────
      Drag-and-drop y actualización en backend
   ────────────────────────────────────────────*/
-  const onDragEnd = async ({ destination, source, draggableId }) => {
+  const onDragEnd = async ({ destination, source }) => {
     if (!destination || destination.droppableId === source.droppableId) return;
 
     // Copias inmutables
     const nuevasColumnas = { ...columnas };
-    const origenItems   = Array.from(nuevasColumnas[source.droppableId]);
-    const destinoItems  = Array.from(nuevasColumnas[destination.droppableId]);
+    const origenItems = Array.from(nuevasColumnas[source.droppableId]);
+    const destinoItems = Array.from(nuevasColumnas[destination.droppableId]);
 
     const [tareaMovida] = origenItems.splice(source.index, 1);
-    tareaMovida.estado = destination.droppableId;            // actualizar estado local
+    tareaMovida.estado = destination.droppableId; // actualizar estado local para feedback inmediato
     destinoItems.splice(destination.index, 0, tareaMovida);
 
-    nuevasColumnas[source.droppableId]     = origenItems;
+    nuevasColumnas[source.droppableId] = origenItems;
     nuevasColumnas[destination.droppableId] = destinoItems;
     setColumnas(nuevasColumnas);
 
-    // Persistir cambio en el backend
+    // Persistir cambio en el backend y recargar para evitar duplicaciones
     try {
       await axios.put(`/tareas/${tareaMovida.id}`, {
         ...tareaMovida,
-        estado: destination.droppableId.toUpperCase()
+        estado: destination.droppableId.toUpperCase(),
       });
+      // Refrescar las tareas desde el backend una vez confirmada la actualización
+      await fetchTareas();
     } catch (err) {
       console.error('Error actualizando tarea:', err);
       // Podrías revertir el estado local o mostrar un mensaje de error
@@ -124,6 +128,7 @@ const KanbanBoard = () => {
 };
 
 export default KanbanBoard;
+
 
 
 

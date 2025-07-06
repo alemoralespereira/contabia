@@ -28,6 +28,7 @@ const Dashboard = ({ user, onLogout }) => {
       setCurrentTasks(tasksRes.data);
       setCurrentClients(clientsRes.data);
       setCurrentUsers(usersRes.data);
+
       // const teamsRes = await axios.get("/equipos");
       // setCurrentTeams(teamsRes.data);
     } catch (err) {
@@ -58,7 +59,7 @@ const Dashboard = ({ user, onLogout }) => {
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
       await axios.put(`/tareas/${taskId}`, { estado: newStatus });
-      await reloadTasks();
+      await reloadTasks(); // 👈 recarga tareas desde backend
     } catch (err) {
       console.error("Error cambiando estado:", err);
     }
@@ -202,4 +203,5 @@ const Dashboard = ({ user, onLogout }) => {
 };
 
 export default Dashboard;
+
 

@@ -28,7 +28,7 @@ class Team(Base):
 
     empresa = relationship("Empresa")
     supervisor = relationship("User", foreign_keys=[supervisor_id])
-    miembros = relationship("User", back_populates="equipo", 	foreign_keys="User.team_id")
+    miembros = relationship("User", back_populates="equipo", foreign_keys="User.team_id")
 
 
 
@@ -38,13 +38,13 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True)
     password = Column(String)
-    rol          = Column(Enum(Rol), nullable=False)
-    empresa_id   = Column(Integer, ForeignKey("empresas.id"), nullable=False)
-    team_id      = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    rol = Column(Enum(Rol), nullable=False)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
 
     empresa = relationship("Empresa", back_populates="usuarios")
-    tareas  = relationship("Tarea", back_populates="usuario")
-    equipo  = relationship("Team", back_populates="miembros")
+    tareas = relationship("Tarea", back_populates="usuario")
+    equipo = relationship("Team", back_populates="miembros", foreign_keys=[team_id])
 
 
 class Cliente(Base):

@@ -16,6 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+print("✅ CORS ACTIVADO para Vercel")
 
 Base.metadata.create_all(bind=engine)
 

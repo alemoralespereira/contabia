@@ -25,7 +25,7 @@ const Login = ({ onLogin }) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          username: formData.email,
+          username: formData.email, // 👈 este campo es correcto
           password: formData.password,
         }),
       });
@@ -44,9 +44,12 @@ const Login = ({ onLogin }) => {
 
       // Ejecuta función de login del componente padre
       onLogin({
-        email: formData.email,
-        rol: payload.rol,
-        empresa_id: payload.empresa_id,
+        token: data.access_token, // 👈 esto es importante para que App.js guarde el token correctamente
+        user: {
+          email: formData.email,
+          rol: payload.rol,
+          empresa_id: payload.empresa_id,
+        },
       });
 
       navigate('/dashboard');
@@ -87,3 +90,4 @@ const Login = ({ onLogin }) => {
 };
 
 export default Login;
+

@@ -64,7 +64,7 @@ const ClientManagement = () => {
         <select
           value={clienteSeleccionado?.id || ''}
           onChange={(e) => {
-            const cliente = clientes.find(c => c.id === parseInt(e.target.value));
+            const cliente = clientes.find(c => c.id === e.target.value);
             setClienteSeleccionado(cliente);
           }}
           className="border p-1 rounded"

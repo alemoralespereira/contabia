@@ -17,7 +17,7 @@ router = APIRouter()
 @router.get("/tareas", response_model=List[TareaOut])
 def obtener_tareas(
     estado: str | None = Query(default=None),
-    cliente_id: int | None = Query(default=None),
+    cliente_id: str | None = Query(default=None),
     fecha_desde: date | None = Query(default=None),
     fecha_hasta: date | None = Query(default=None),
     db: Session = Depends(get_db),

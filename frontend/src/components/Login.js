@@ -62,13 +62,13 @@ const Login = ({ onLogin }) => {
       <form onSubmit={handleSubmit} className="login-form">
         <h2>Iniciar sesión</h2>
         <input
-          type="email"
-          name="username"
-          placeholder="Correo electrónico"
-          value={formData.username}
-          onChange={handleChange}
-          required
-        />
+  	type="text"
+  	name="username"
+  	placeholder="Usuario"
+  	value={formData.username}
+  	onChange={handleChange}
+  	required
+	/>
         <input
           type="password"
           name="password"

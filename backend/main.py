@@ -7,6 +7,16 @@ from routers.usuarios import router as usuarios_router
 
 app = FastAPI()
 
+# Middleware CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[""https://contabia-git-main-alejandro-morales-projects-f200c0cc.vercel.app""], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 Base.metadata.create_all(bind=engine)
 
 # Routers
@@ -15,14 +25,7 @@ app.include_router(tareas.router)
 app.include_router(clientes.router)
 app.include_router(usuarios_router)  # ⬅️ Nuevo router agregado
 
-# Middleware CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 # Ruta base
 @app.get("/")

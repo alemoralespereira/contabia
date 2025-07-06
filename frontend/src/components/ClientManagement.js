@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import KanbanBoard from './KanbanBoard';
-
-const API_URL = process.env.REACT_APP_API_URL;
+import React, { useEffect, useState } from "react";
+import KanbanBoard from "./KanbanBoard";
+import axios from "../axiosInstance";           // ⬅️ Usa la instancia con token
 
 const ClientManagement = () => {
   const [clientes, setClientes] = useState([]);
@@ -10,49 +9,44 @@ const ClientManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const token = localStorage.getItem('token');
-
+  /* ----------------------- Cargar lista de clientes ---------------------- */
   useEffect(() => {
     const fetchClientes = async () => {
       try {
-        const response = await fetch(`${API_URL}/clientes`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
-        setClientes(data);
+        const res = await axios.get("/clientes");
+        setClientes(res.data);
       } catch (err) {
-        setError('Error al obtener clientes');
+        console.error(err);
+        setError("Error al obtener clientes");
       }
     };
 
     fetchClientes();
-  }, [token]);
+  }, []);
 
+  /* ----------------------- Cargar tareas de cliente ---------------------- */
   useEffect(() => {
     const fetchTareas = async () => {
       if (!clienteSeleccionado) return;
-
       setLoading(true);
+
       try {
-        const response = await fetch(`${API_URL}/tareas?cliente_id=${clienteSeleccionado.id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+        const res = await axios.get("/tareas", {
+          params: { cliente_id: clienteSeleccionado.id }, // ?cliente_id=XXX
         });
-        const data = await response.json();
-        setTareas(data);
-        setLoading(false);
+        setTareas(res.data);
       } catch (err) {
-        setError('Error al obtener tareas');
+        console.error(err);
+        setError("Error al obtener tareas");
+      } finally {
         setLoading(false);
       }
     };
 
     fetchTareas();
-  }, [clienteSeleccionado, token]);
+  }, [clienteSeleccionado]);
 
+  /* ----------------------------- Render UI ------------------------------ */
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Gestión de Clientes</h1>
@@ -62,15 +56,16 @@ const ClientManagement = () => {
       <div className="mb-4">
         <label className="mr-2 font-semibold">Seleccionar cliente:</label>
         <select
-          value={clienteSeleccionado?.id || ''}
-          onChange={(e) => {
-            const cliente = clientes.find(c => c.id === e.target.value);
-            setClienteSeleccionado(cliente);
-          }}
+          value={clienteSeleccionado?.id || ""}
+          onChange={(e) =>
+            setClienteSeleccionado(
+              clientes.find((c) => c.id === e.target.value)
+            )
+          }
           className="border p-1 rounded"
         >
           <option value="">-- Seleccionar --</option>
-          {clientes.map(cliente => (
+          {clientes.map((cliente) => (
             <option key={cliente.id} value={cliente.id}>
               {cliente.nombre}
             </option>
@@ -80,14 +75,22 @@ const ClientManagement = () => {
 
       {loading ? (
         <p>Cargando tareas...</p>
-      ) : clienteSeleccionado && (
-        <>
-          <h2 className="text-xl font-semibold mb-2">Tareas de {clienteSeleccionado.nombre}</h2>
-          <KanbanBoard tareas={tareas} clienteId={clienteSeleccionado.id} />
-        </>
+      ) : (
+        clienteSeleccionado && (
+          <>
+            <h2 className="text-xl font-semibold mb-2">
+              Tareas de {clienteSeleccionado.nombre}
+            </h2>
+            <KanbanBoard
+              tareas={tareas}                    /* Prop igual que antes */
+              clienteId={clienteSeleccionado.id} /* Prop igual que antes */
+            />
+          </>
+        )
       )}
     </div>
   );
 };
 
 export default ClientManagement;
+

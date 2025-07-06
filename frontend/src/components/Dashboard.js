@@ -8,21 +8,7 @@ import Reports from "./Reports";
 import UserProfile from "./UserProfile";
 import { getUserTeamMembers } from "../utils/auth";
 import { getTasksByUser, updateTaskStatus } from "../utils/taskUtils";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:8000"; // backend
-
-/** Utilidad genérica para fetch con token JWT */
-const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem("token");
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-    ...options.headers,
-  };
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-  return res.json();
-};
+import axios from "../axiosInstance";
 
 const Dashboard = ({ user, onLogout }) => {
   // ---------------- Estado ----------------
@@ -36,21 +22,20 @@ const Dashboard = ({ user, onLogout }) => {
   // ---------------- Cargar datos iniciales ----------------
   const loadInitialData = useCallback(async () => {
     try {
-      const [tasks, clients, users] = await Promise.all([
-        fetchWithAuth(`${API}/tareas`),     // tareas por empresa
-        fetchWithAuth(`${API}/clientes`),   // clientes
-        fetchWithAuth(`${API}/usuarios`),   // usuarios (visible solo a admin)
+      const [tasksRes, clientsRes, usersRes] = await Promise.all([
+        axios.get("/tareas"),
+        axios.get("/clientes"),
+        axios.get("/usuarios"),
       ]);
-      setCurrentTasks(tasks);
-      setCurrentClients(clients);
-      setCurrentUsers(users);
+      setCurrentTasks(tasksRes.data);
+      setCurrentClients(clientsRes.data);
+      setCurrentUsers(usersRes.data);
 
-      // (Opcional) Cargar teams cuando implementes /equipos
-      // const teams = await fetchWithAuth(`${API}/equipos`);
-      // setCurrentTeams(teams);
+      // const teamsRes = await axios.get("/equipos");
+      // setCurrentTeams(teamsRes.data);
     } catch (err) {
       console.error("Error cargando datos iniciales:", err);
-      if (err.message.includes("401")) onLogout(); // token vencido / inválido
+      if (err.response?.status === 401) onLogout();
     }
   }, [onLogout]);
 
@@ -58,42 +43,31 @@ const Dashboard = ({ user, onLogout }) => {
     loadInitialData();
   }, [loadInitialData]);
 
-  // Obtener miembros del equipo (utilidad)
   const teamMembers = getUserTeamMembers(user, currentUsers, currentTeams);
 
-  // Reset selección si dejas la vista Kanban
   useEffect(() => {
     if (currentView !== "kanban") setSelectedTeamMember(null);
   }, [currentView]);
 
   // ---------------- Handlers ----------------
-  // Cambiar estado de una tarea (drag-&-drop o select)
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
-      await fetchWithAuth(`${API}/tareas/${taskId}`, {
-        method: "PUT",
-        body: JSON.stringify({ estado: newStatus }),
-      });
+      await axios.put(`/tareas/${taskId}`, { estado: newStatus });
       setCurrentTasks((prev) => updateTaskStatus(prev, taskId, newStatus));
     } catch (err) {
       console.error("Error cambiando estado:", err);
     }
   };
 
-  // Seleccionar miembro
   const handleTeamMemberSelect = (memberId) => {
     setSelectedTeamMember(memberId);
     setCurrentView("kanban");
   };
 
-  // ---------- Clientes ----------
   const handleAddClient = async (newClient) => {
     try {
-      const created = await fetchWithAuth(`${API}/clientes`, {
-        method: "POST",
-        body: JSON.stringify(newClient),
-      });
-      setCurrentClients((prev) => [...prev, created]);
+      const res = await axios.post("/clientes", newClient);
+      setCurrentClients((prev) => [...prev, res.data]);
     } catch (err) {
       console.error("Error añadiendo cliente:", err);
     }
@@ -101,20 +75,15 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleEditClient = async (updatedClient) => {
     try {
-      const res = await fetchWithAuth(`${API}/clientes/${updatedClient.id}`, {
-        method: "PUT",
-        body: JSON.stringify(updatedClient),
-      });
+      const res = await axios.put(`/clientes/${updatedClient.id}`, updatedClient);
       setCurrentClients((prev) =>
-        prev.map((c) => (c.id === res.id ? res : c))
+        prev.map((c) => (c.id === res.data.id ? res.data : c))
       );
     } catch (err) {
       console.error("Error editando cliente:", err);
     }
   };
 
-  // ---------- Equipos & Usuarios ----------
-  // Stubs para implementar cuando tengas endpoints
   const handleAddTeam = async (newTeam) => {};
   const handleEditTeam = async (team) => {};
   const handleDeleteTeam = async (id) => {};
@@ -206,7 +175,6 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  // ---------------- Layout principal ----------------
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar
@@ -214,7 +182,6 @@ const Dashboard = ({ user, onLogout }) => {
         setCurrentView={setCurrentView}
         user={user}
       />
-
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           user={user}
@@ -224,7 +191,6 @@ const Dashboard = ({ user, onLogout }) => {
           onSelectMember={handleTeamMemberSelect}
           onClearSelection={() => setSelectedTeamMember(null)}
         />
-
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4">
           {renderCurrentView()}
         </main>

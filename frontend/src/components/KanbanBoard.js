@@ -71,7 +71,7 @@ const KanbanBoard = () => {
 
     // Persistir cambio en el backend y recargar para evitar duplicaciones
     try {
-      await axios.put(/tareas/${tareaMovida.id}, {
+      await axios.put(`/tareas/${tareaMovida.id}`, {
         ...tareaMovida,
         estado: destination.droppableId.toUpperCase(),
       });

@@ -8,6 +8,7 @@ from models import User              # modelo SQLAlchemy
 from database import get_db
 import os
 from dotenv import load_dotenv
+from models import Rol
 
 # ────────────────────────────────────────────────────────────
 #  Configuración básica
@@ -87,20 +88,21 @@ def get_current_user(
 
     try:
         payload      = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id      = payload.get("sub")  # 👈 ahora es el id (string)
+        user_id      = payload.get("sub")
         empresa_id   = payload.get("empresa_id")
-        rol          = payload.get("rol")
+        rol          = payload.get("rol")  # 'admin', 'supervisor' o 'miembro'
         if user_id is None or empresa_id is None or rol is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == int(user_id)).first()  # 👈 convierte id a int
+    user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
         raise credentials_exception
 
-    # Adjuntar al objeto usuario la info del token
+    # CORRECCIÓN AQUÍ 👇
     user.empresa_id = empresa_id
-    user.rol        = rol
+    user.rol        = Rol(rol)  # 👈 Convertir string nuevamente a Enum
+
     return user
 

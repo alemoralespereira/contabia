@@ -47,7 +47,7 @@ def create_access_token(user):
         "sub": str(user.id),  # 👈 CAMBIO: antes era user.email
         "user_id": user.id,
         "empresa_id": user.empresa_id,
-        "rol": str(user.rol),  # 👈 convertimos el Enum a string
+        "rol": user.rol.value,
     }
     encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

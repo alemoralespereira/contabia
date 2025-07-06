@@ -7,6 +7,7 @@ from database import get_db
 from models import User
 from schemas import UserCreate, UserUpdate, UserOut
 from routers.auth import get_current_user, get_password_hash
+from models import Rol
 
 router = APIRouter()
 
@@ -64,7 +65,7 @@ def crear_usuario(
         username=nuevo.email,
         email=nuevo.email,
         password=get_password_hash(nuevo.password),
-        rol=nuevo.rol,
+        rol=Rol(nuevo.rol) if isinstance(nuevo.rol, str) else nuevo.rol,
         empresa_id=current_user.empresa_id
     )
     db.add(usuario_db)
@@ -111,7 +112,7 @@ def actualizar_usuario(
     if datos.password:
         usuario.password = get_password_hash(datos.password)
     if datos.rol:
-        usuario.rol = datos.rol
+        usuario.rol = Rol(datos.rol) if isinstance(datos.rol, str) else datos.rol
 
     db.commit()
     db.refresh(usuario)

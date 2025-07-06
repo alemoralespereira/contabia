@@ -28,7 +28,7 @@ class ClienteUpdate(BaseModel):
 
 
 class ClienteOut(BaseModel):
-    id: int
+    id: str
     nombre: str
 
     class Config:

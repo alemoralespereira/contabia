@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../styles.css';
 
 const Login = ({ onLogin }) => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ const Login = ({ onLogin }) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          username: formData.email, // 👈 este campo es correcto
+          username: formData.username,
           password: formData.password,
         }),
       });
@@ -36,17 +36,14 @@ const Login = ({ onLogin }) => {
         throw new Error(data.detail || 'Error al iniciar sesión');
       }
 
-      // Almacena el token en localStorage
       localStorage.setItem('token', data.access_token);
 
-      // Decodifica el token para extraer información del usuario
       const payload = JSON.parse(atob(data.access_token.split('.')[1]));
 
-      // Ejecuta función de login del componente padre
       onLogin({
-        token: data.access_token, // 👈 esto es importante para que App.js guarde el token correctamente
+        token: data.access_token,
         user: {
-          email: formData.email,
+          email: formData.username,
           rol: payload.rol,
           empresa_id: payload.empresa_id,
         },
@@ -66,9 +63,9 @@ const Login = ({ onLogin }) => {
         <h2>Iniciar sesión</h2>
         <input
           type="email"
-          name="email"
+          name="username"
           placeholder="Correo electrónico"
-          value={formData.email}
+          value={formData.username}
           onChange={handleChange}
           required
         />
@@ -90,4 +87,5 @@ const Login = ({ onLogin }) => {
 };
 
 export default Login;
+
 

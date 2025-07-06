@@ -50,7 +50,7 @@ class User(Base):
 
 class Cliente(Base):
     __tablename__ = "clientes"
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, primary_key=True)
     nombre = Column(String)
     empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
 

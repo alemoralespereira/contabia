@@ -44,7 +44,7 @@ def authenticate_user(db: Session, username: str, password: str):
 # ────────────────────────────────────────────────────────────
 def create_access_token(user):
     payload = {
-        "sub": user.email,
+        "sub": str(user.id),  # 👈 CAMBIO: antes era user.email
         "user_id": user.id,
         "empresa_id": user.empresa_id,
         "rol": str(user.rol),  # 👈 convertimos el Enum a string
@@ -87,7 +87,7 @@ def get_current_user(
 
     try:
         payload      = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id      = payload.get("sub")
+        user_id      = payload.get("sub")  # 👈 ahora es el id (string)
         empresa_id   = payload.get("empresa_id")
         rol          = payload.get("rol")
         if user_id is None or empresa_id is None or rol is None:
@@ -95,7 +95,7 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.query(User).filter(User.id == int(user_id)).first()  # 👈 convierte id a int
     if user is None:
         raise credentials_exception
 

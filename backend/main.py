@@ -10,7 +10,8 @@ app = FastAPI()
 # Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["https://contabia-git-main-alejandro-morales-projects-f200c0cc.vercel.app",
+    "http://localhost:3000"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

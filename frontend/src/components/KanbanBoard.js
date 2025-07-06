@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import axios from '../axiosInstance'; // 👈 usa el wrapper con interceptor
 
 // Etiquetas amigables para los encabezados de columna
 const estadoColumnas = {
@@ -8,60 +9,77 @@ const estadoColumnas = {
   COMPLETADA: 'Completada',
 };
 
-// Estructura inicial vacía (se clona cada vez que llegan nuevas tareas)
+// Estructura inicial vacía
 const columnasIniciales = {
   PENDIENTE: [],
   EN_PROGRESO: [],
   COMPLETADA: [],
 };
 
-/**
- * KanbanBoard
- * --------------------------------------------------
- * Ahora es un componente «controlado»: NO hace peticiones HTTP.
- *   - Recibe las tareas vía props.
- *   - Notifica al padre los cambios de estado con onStatusChange.
- *   - Mantiene solo el estado de columnas para renderizar.
- */
-const KanbanBoard = ({ tasks = [], onStatusChange }) => {
+const KanbanBoard = () => {
+  const [tareas, setTareas] = useState([]);
   const [columnas, setColumnas] = useState(columnasIniciales);
 
   /* ───────────────────────────────────────────
-     Reconstruir columnas cada vez que cambian las tareas
+     Función reutilizable para traer tareas
   ────────────────────────────────────────────*/
-  useEffect(() => {
-    const nuevasColumnas = { ...columnasIniciales };
-    tasks.forEach((t) => {
-      const estadoNormalizado = t.estado?.trim().toUpperCase();
-      if (estadoNormalizado && nuevasColumnas[estadoNormalizado]) {
-        nuevasColumnas[estadoNormalizado].push({ ...t, estado: estadoNormalizado });
-      }
-    });
-    setColumnas(nuevasColumnas);
-  }, [tasks]);
+  const fetchTareas = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/tareas');
+      setTareas(data);
+
+      // Distribuir tareas normalizando el estado
+      const nuevasColumnas = { ...columnasIniciales };
+      data.forEach((t) => {
+        const estadoNormalizado = t.estado?.trim().toUpperCase();
+        if (estadoNormalizado && nuevasColumnas[estadoNormalizado]) {
+          nuevasColumnas[estadoNormalizado].push({ ...t, estado: estadoNormalizado });
+        }
+      });
+      setColumnas(nuevasColumnas);
+    } catch (err) {
+      console.error('Error al obtener tareas:', err);
+      // Podrías mostrar un toast o mensaje de error si lo deseas
+    }
+  }, []);
 
   /* ───────────────────────────────────────────
-     Drag‑and‑drop — solo UI + callback al padre
+     Cargar tareas al montar el componente
   ────────────────────────────────────────────*/
-  const onDragEnd = ({ destination, source }) => {
+  useEffect(() => {
+    fetchTareas();
+  }, [fetchTareas]);
+
+  /* ───────────────────────────────────────────
+     Drag-and-drop y actualización en backend
+  ────────────────────────────────────────────*/
+  const onDragEnd = async ({ destination, source }) => {
     if (!destination || destination.droppableId === source.droppableId) return;
 
-    // Copias inmutables para feedback inmediato
+    // Copias inmutables
     const nuevasColumnas = { ...columnas };
     const origenItems = Array.from(nuevasColumnas[source.droppableId]);
     const destinoItems = Array.from(nuevasColumnas[destination.droppableId]);
 
     const [tareaMovida] = origenItems.splice(source.index, 1);
-    tareaMovida.estado = destination.droppableId;
+    tareaMovida.estado = destination.droppableId; // actualizar estado local para feedback inmediato
     destinoItems.splice(destination.index, 0, tareaMovida);
 
     nuevasColumnas[source.droppableId] = origenItems;
     nuevasColumnas[destination.droppableId] = destinoItems;
     setColumnas(nuevasColumnas);
 
-    // Avisar al componente padre para que persista y recargue
-    if (onStatusChange) {
-      onStatusChange(tareaMovida.id, destination.droppableId.toUpperCase());
+    // Persistir cambio en el backend y recargar para evitar duplicaciones
+    try {
+      await axios.put(/tareas/${tareaMovida.id}, {
+        ...tareaMovida,
+        estado: destination.droppableId.toUpperCase(),
+      });
+      // Refrescar las tareas desde el backend una vez confirmada la actualización
+      await fetchTareas();
+    } catch (err) {
+      console.error('Error actualizando tarea:', err);
+      // Podrías revertir el estado local o mostrar un mensaje de error
     }
   };
 
